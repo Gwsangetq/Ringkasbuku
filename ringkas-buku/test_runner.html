@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Automated Self-Diagnosis Test Runner</title>
+  <link rel="stylesheet" href="styles.css?v=17">
+</head>
+<body style="padding: 20px; font-family: sans-serif;">
+  <div id="testLog" style="background: #0f172a; color: #f8fafc; padding: 20px; border-radius: 12px; font-family: monospace; white-space: pre-wrap; font-size: 14px; margin-bottom: 20px;"></div>
+
+  <!-- Include the entire index.html structure for test harness -->
+  <div id="appContainer"></div>
+
+  <script src="config.js?v=17"></script>
+  <script src="books-data.js?v=17"></script>
+  <script src="summarizer.js?v=17"></script>
+
+  <script>
+    const logEl = document.getElementById("testLog");
+    function log(msg) {
+      console.log(msg);
+      logEl.textContent += msg + "\n";
+    }
+
+    async function runDiagnostics() {
+      log("==================================================");
+      log("🚀 RINGKASBUKU AUTOMATED SELF-DIAGNOSIS TEST SUITE");
+      log("==================================================");
+
+      let passed = 0;
+      let total = 8;
+
+      // 1. Fetch index.html markup
+      const res = await fetch("index.html?v=17");
+      const htmlText = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, "text/html");
+      
+      const appContainer = document.getElementById("appContainer");
+      // Inject header and main
+      appContainer.innerHTML = doc.querySelector("header").outerHTML + doc.querySelector("main").outerHTML;
+
+      // Load app.js
+      const script = document.createElement("script");
+      script.src = "app.js?v=17";
+      document.body.appendChild(script);
+
+      await new Promise(r => setTimeout(r, 600));
+
+      const modal = document.getElementById("registerModal");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const requestBtn = document.getElementById("requestBtn");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+      const modalSubmitBtn = document.getElementById("modalSubmitBtn");
+      const modalEmailInput = document.getElementById("modalEmailInput");
+      const userLabel = document.getElementById("userLabel");
+
+      // TEST 1: Initial load modal visibility
+      log("\n[TEST 1] Verifying #registerModal is hidden on initial load/refresh...");
+      const modalDisplay1 = window.getComputedStyle(modal).display;
+      if (modalDisplay1 === "none" && modal.hidden) {
+        log("✅ PASS: #registerModal is strictly hidden (display: none, hidden=true)");
+        passed++;
+      } else {
+        log("❌ FAIL: Modal is visible! display=" + modalDisplay1 + ", hidden=" + modal.hidden);
+      }
+
+      // TEST 2: Curated books rendered for guest
+      log("\n[TEST 2] Verifying guest user can browse catalog freely...");
+      const cards = document.querySelectorAll(".book-grid-card");
+      if (cards.length >= 10) {
+        log(`✅ PASS: Catalog rendered ${cards.length} curated books for guest user`);
+        passed++;
+      } else {
+        log(`❌ FAIL: Expected at least 10 book cards, found ${cards.length}`);
+      }
+
+      // TEST 3: Guest clicking #uploadBtn triggers registration popup
+      log("\n[TEST 3] Verifying guest clicking #uploadBtn triggers registration modal...");
+      uploadBtn.click();
+      await new Promise(r => setTimeout(r, 100));
+      const modalDisplay2 = window.getComputedStyle(modal).display;
+      if (modalDisplay2 === "flex" && !modal.hidden) {
+        log("✅ PASS: Modal opened with display: flex upon upload click by guest");
+        passed++;
+      } else {
+        log("❌ FAIL: Modal did not open! display=" + modalDisplay2);
+      }
+
+      // TEST 4: Clicking close button (X) hides the modal
+      log("\n[TEST 4] Verifying close button (X) hides the modal...");
+      closeModalBtn.click();
+      await new Promise(r => setTimeout(r, 100));
+      const modalDisplay3 = window.getComputedStyle(modal).display;
+      if (modalDisplay3 === "none" && modal.hidden) {
+        log("✅ PASS: Modal cleanly closed upon clicking (X)");
+        passed++;
+      } else {
+        log("❌ FAIL: Modal remained visible after clicking (X)! display=" + modalDisplay3);
+      }
+
+      // TEST 5: Guest clicking #requestBtn triggers registration popup
+      log("\n[TEST 5] Verifying guest clicking #requestBtn triggers registration modal...");
+      document.getElementById("requestTitle").value = "Sapiens by Yuval Noah Harari";
+      requestBtn.click();
+      await new Promise(r => setTimeout(r, 100));
+      const modalDisplay4 = window.getComputedStyle(modal).display;
+      if (modalDisplay4 === "flex" && !modal.hidden) {
+        log("✅ PASS: Modal opened upon request click by guest");
+        passed++;
+      } else {
+        log("❌ FAIL: Modal did not open! display=" + modalDisplay4);
+      }
+
+      // TEST 6: Clicking backdrop outside modal card closes the modal
+      log("\n[TEST 6] Verifying backdrop click closes modal...");
+      modal.click();
+      await new Promise(r => setTimeout(r, 100));
+      const modalDisplay5 = window.getComputedStyle(modal).display;
+      if (modalDisplay5 === "none" && modal.hidden) {
+        log("✅ PASS: Modal cleanly closed upon clicking backdrop");
+        passed++;
+      } else {
+        log("❌ FAIL: Modal remained visible after backdrop click! display=" + modalDisplay5);
+      }
+
+      // TEST 7: Registering via modal converts guest to registered user
+      log("\n[TEST 7] Verifying registration flow via modal...");
+      uploadBtn.click();
+      await new Promise(r => setTimeout(r, 100));
+      modalEmailInput.value = "fauzan@ringkasbuku.ai";
+      modalSubmitBtn.click();
+      await new Promise(r => setTimeout(r, 200));
+
+      const modalDisplay6 = window.getComputedStyle(modal).display;
+      const storedUser = JSON.parse(localStorage.getItem("rb_user") || "{}");
+      if (modalDisplay6 === "none" && storedUser.email === "fauzan@ringkasbuku.ai" && storedUser.isGuest === false) {
+        log("✅ PASS: User registered successfully, upgraded to isGuest=false, modal closed!");
+        passed++;
+      } else {
+        log("❌ FAIL: Registration failed! storedUser=" + JSON.stringify(storedUser));
+      }
+
+      // TEST 8: Registered user does NOT see popup on refresh
+      log("\n[TEST 8] Verifying registered user state persistence...");
+      if (userLabel.textContent.includes("fauzan@ringkasbuku.ai")) {
+        log("✅ PASS: Header user label displays registered email");
+        passed++;
+      } else {
+        log("❌ FAIL: Header user label does not match registered email: " + userLabel.textContent);
+      }
+
+      log("\n==================================================");
+      log(`🎯 RESULT: ${passed} OF ${total} TESTS PASSED!`);
+      log("==================================================");
+
+      if (passed === total) {
+        document.title = "ALL_TESTS_PASSED_8_OF_8";
+        log("🎉 ALL TESTS PASSED WITH 0 ERRORS! SYSTEM IS VERIFIED READY.");
+      } else {
+        document.title = "TESTS_FAILED";
+      }
+    }
+
+    window.onload = runDiagnostics;
+  </script>
+</body>
+</html>

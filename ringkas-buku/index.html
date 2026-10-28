@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<title>RingkasBuku — Perpustakaan Intisari Buku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=20">
+<script>
+window.onerror = function(msg, url, line, col, error) {
+  var errText = "JS ERROR: " + msg + " in " + url + " line " + line + ":" + col;
+  try { fetch('/log_error?msg=' + encodeURIComponent(errText)); } catch(e){}
+  var d = document.getElementById("globalErrBox");
+  if (!d) {
+    d = document.createElement("div");
+    d.id = "globalErrBox";
+    d.style.cssText = "position:fixed;bottom:10px;left:10px;right:10px;background:#b91c1c;color:white;padding:16px;border-radius:12px;z-index:999999;font-family:monospace;font-size:13px;box-shadow:0 10px 25px rgba(0,0,0,0.4);";
+    document.body ? document.body.appendChild(d) : document.documentElement.appendChild(d);
+  }
+  d.innerHTML = "<strong>Terjadi Kendala JavaScript:</strong><br>" + msg + "<br><small>" + url + ":" + line + "</small>";
+};
+</script>
+<!-- Supabase JS Client via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand-area">
+    <span class="brand-icon">📖</span>
+    <div class="brand-text">
+      <h1 class="brand-title">RingkasBuku</h1>
+      <span class="brand-tagline">Perpustakaan Intisari Buku Berbobot</span>
+    </div>
+  </div>
+  <div id="authArea" class="auth-area">
+    <span id="userLabel" class="user-badge" hidden></span>
+    <button id="logoutBtn" class="btn-secondary" hidden>Keluar</button>
+  </div>
+</header>
+
+<main>
+  <!-- MODAL REGISTRASI CEPAT UNTUK TAMU (GUEST) -->
+  <div id="registerModal" class="modal-backdrop" hidden style="display: none !important;">
+    <div class="modal-card">
+      <button id="closeModalBtn" class="modal-close-btn" type="button">✕</button>
+      <div class="modal-badge">🔒 Fitur Khusus Pengguna Terdaftar</div>
+      <h3 class="modal-title">Daftar Akun Gratis untuk Unggah Buku</h3>
+      <p class="modal-desc">
+        Agar dokumen dan hasil ringkasan privatmu tersimpan permanen dan tidak hilang saat ganti perangkat, silakan daftarkan emailmu. Gratis selamanya!
+      </p>
+      <div class="modal-form">
+        <label class="form-label">Alamat Email</label>
+        <input id="modalEmailInput" type="email" placeholder="nama@email.com" class="input-modern">
+        <label class="form-label" style="margin-top: 12px;">Password (Opsional)</label>
+        <input id="modalPasswordInput" type="password" placeholder="Password kamu" class="input-modern">
+        <button id="modalSubmitBtn" class="btn-primary" style="width: 100%; margin-top: 16px; padding: 12px; font-weight: 700;">
+          ✓ Daftar &amp; Lanjutkan Upload
+        </button>
+        <p id="modalMsg" style="font-size: 0.85rem; color: #dc2626; margin-top: 8px; text-align: center;"></p>
+      </div>
+    </div>
+  </div>
+  <!-- AUTH SECTION: SPLIT LANDING & SPOILER CAROUSEL SHOWCASE -->
+  <section id="authSection" class="auth-landing-wrapper" hidden>
+    <div class="auth-landing-grid">
+      <!-- SISI KIRI: VALUE PROPOSITION & SPOILER CAROUSEL -->
+      <div class="auth-showcase-panel">
+        <div class="hero-badge">📚 Perpustakaan Ringkasan Nonfiksi Terbaik</div>
+        <h2 class="auth-hero-title">Kuasai Gagasan Terbesar Dunia Hanya dalam <span class="text-highlight">15–20 Menit</span>.</h2>
+        <p class="auth-hero-subtitle">
+          Intisari padat analitis tanpa harus menghabiskan puluhan jam membaca ratusan halaman. Lengkap dengan framework taktis dan rencana aksi nyata.
+        </p>
+
+        <!-- CAROUSEL SPOILER BUKU INTERAKTIF -->
+        <div class="spoiler-carousel-box">
+          <div class="carousel-header">
+            <span class="carousel-tag">📖 Spoiler Buku yang Siap Kamu Baca:</span>
+            <div class="carousel-nav-arrows">
+              <button id="carouselPrevBtn" class="carousel-arrow" type="button" aria-label="Sebelumnya">‹</button>
+              <button id="carouselNextBtn" class="carousel-arrow" type="button" aria-label="Selanjutnya">›</button>
+            </div>
+          </div>
+
+          <div id="carouselSlideTrack" class="carousel-track">
+            <!-- Dynamic slides rendered via JS -->
+          </div>
+
+          <div id="carouselDots" class="carousel-dots-row"></div>
+        </div>
+
+        <!-- 3 NILAI KEUNGGULAN (ORISINAL & MEMIKAT) -->
+        <div class="auth-value-pillars">
+          <div class="pillar-item">
+            <div class="pillar-num">01</div>
+            <div class="pillar-content">
+              <strong>Bukan Cerpen Kilat</strong>
+              <p>Ringkasan analitis mendalam per bab dengan konteks, sains perilaku, dan argumen asli penulis.</p>
+            </div>
+          </div>
+          <div class="pillar-item">
+            <div class="pillar-num">02</div>
+            <div class="pillar-content">
+              <strong>Framework &amp; Aksi Nyata</strong>
+              <p>Dilengkapi checklist konkret yang langsung bisa dipraktikkan minggu ini di karir dan kehidupanmu.</p>
+            </div>
+          </div>
+          <div class="pillar-item">
+            <div class="pillar-num">03</div>
+            <div class="pillar-content">
+              <strong>Unggah &amp; Ringkas AI</strong>
+              <p>Punya buku PDF/EPUB sendiri? Unggah dan sintesis otomatis secara privat tanpa batas.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SISI KANAN: KARTU LOGIN MODERN -->
+      <div class="auth-card-panel">
+        <div class="card-auth-modern">
+          <div class="auth-card-badge">✨ Akses Penuh RingkasBuku</div>
+          <h3 class="auth-card-title">Mulai Membaca Sekarang</h3>
+          <p class="auth-card-desc">Simpan progres membaca, tandai buku favorit, dan unggah ringkasan privat kamu.</p>
+
+          <div class="auth-form-fields">
+            <label class="form-label">Alamat Email</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">✉</span>
+              <input id="emailInput" type="email" placeholder="nama@email.com (bebas / apa saja)" class="input-modern-auth" autocomplete="email">
+            </div>
+
+            <label class="form-label" style="margin-top: 14px;">Password <span style="font-weight: 400; color: #736758;">(opsional)</span></label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">🔒</span>
+              <input id="passwordInput" type="password" placeholder="Password kamu" class="input-modern-auth" autocomplete="current-password">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 18px;">
+              <button id="loginBtn" class="btn-primary" style="flex: 1; padding: 12px; font-weight: 700; font-size: 0.95rem;">Masuk</button>
+              <button id="registerBtn" class="btn-secondary" style="flex: 1; padding: 12px; font-weight: 600;">Daftar Akun</button>
+            </div>
+
+            <div class="auth-divider">
+              <span>atau langsung coba</span>
+            </div>
+
+            <button id="guestBtn" class="btn-instant-access">
+              ⚡ Masuk Instan (Langsung Akses 100% Gratis)
+            </button>
+            <p id="authMsg" class="auth-err-msg"></p>
+          </div>
+
+          <div class="auth-guarantee-note">
+            <span class="check-icon">✓</span> Bebas Akses 10 Buku Kurasi Lengkap &amp; Ringkas Dokumen PDF/EPUB
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PERPUSTAKAAN SECTION (Aktif & Terbuka secara default) -->
+  <section id="librarySection">
+    <div class="hero-header">
+      <h1 class="hero-title">Perpustakaan Ringkasan</h1>
+      <p class="hero-subtitle">Intisari buku-buku terbaik dunia, diringkas mendalam dan berbobot dalam bacaan nyata 15–20 menit.</p>
+    </div>
+
+    <!-- MAIN TABS (Pemisahan Tab: Perpustakaan vs Buku yang Diupload) -->
+    <div class="main-tabs-bar">
+      <button class="main-tab-pill active" id="tabLibraryBtn" data-view="catalog">
+        <span class="tab-emoji">📚</span> Perpustakaan <span class="badge" id="badgeAll">10</span>
+      </button>
+      <button class="main-tab-pill" id="tabUploadsBtn" data-view="uploads">
+        <span class="tab-emoji">📤</span> Buku yang Diupload <span class="badge" id="badgeUploads">0</span>
+      </button>
+    </div>
+
+    <!-- VIEW 1: PERPUSTAKAAN (Buku Kurasi Resmi) -->
+    <div id="catalogView" class="view-panel">
+      <!-- BANNER BUKU PILIHAN HARI INI (FEATURED BOOK OF THE DAY) -->
+      <div id="featuredBookBanner" class="featured-book-banner" onclick="openBook('atomic-habits')">
+        <div class="featured-banner-content">
+          <div class="featured-badge">⭐ BUKU REKOMENDASI HARI INI</div>
+          <h2 class="featured-title">Atomic Habits</h2>
+          <p class="featured-author">Oleh: <strong>James Clear</strong> · Kategori: Produktivitas &amp; Sains Kebiasaan</p>
+          <p class="featured-pitch">
+            "Kemenangan besar bukanlah hasil dari lompatan raksasa satu malam, melainkan akumulasi sistem perbaikan kecil 1% setiap hari."
+          </p>
+          <div class="featured-footer-row">
+            <span class="featured-time">⏱ 15–20 Menit Baca Nyata</span>
+            <button class="btn-featured-read">Mulai Baca Rekomendasi Ini →</button>
+          </div>
+        </div>
+        <div class="featured-banner-cover">
+          <img src="https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1655988385i/40121378.jpg" alt="Atomic Habits" class="featured-cover-img">
+        </div>
+      </div>
+
+      <!-- FILTER KATEGORI TOPIK NYATA -->
+      <div class="topic-filter-bar">
+        <span class="topic-filter-label">Kategori Topik:</span>
+        <div class="topic-pills-scroll">
+          <button class="topic-pill active" data-topic="all">Semua Topik</button>
+          <button class="topic-pill" data-topic="Produktivitas">🎯 Produktivitas</button>
+          <button class="topic-pill" data-topic="Keuangan">💰 Keuangan</button>
+          <button class="topic-pill" data-topic="Psikologi">🧠 Psikologi</button>
+          <button class="topic-pill" data-topic="Filsafat">🌿 Filsafat Hidup</button>
+          <button class="topic-pill" data-topic="Bisnis">💼 Bisnis &amp; Karir</button>
+        </div>
+      </div>
+
+      <div class="filter-toolbar">
+        <div class="tabs-bar" style="margin: 0;">
+          <button data-tab="all" class="tab-pill active">Semua Buku</button>
+          <button data-tab="reading" class="tab-pill">Sedang Dibaca <span class="badge" id="badgeReading">0</span></button>
+          <button data-tab="fav" class="tab-pill">Favorit <span class="badge" id="badgeFav">0</span></button>
+        </div>
+        <div class="search-wrapper" style="margin: 0; flex: 1; min-width: 260px;">
+          <input id="searchInput" class="search-input" type="search" placeholder="Cari judul, penulis, atau topik… (contoh: James Clear, Keuangan, Fokus)">
+        </div>
+      </div>
+
+      <!-- GRID DISPLAY BUKU MODERN -->
+      <div id="bookGrid" class="book-grid"></div>
+      <p id="emptyMsg" style="color: #736758; font-style: italic; text-align: center; padding: 36px;" hidden></p>
+    </div>
+
+    <!-- VIEW 2: BUKU YANG DIUPLOAD (Buku Privat User) -->
+    <div id="uploadsView" class="view-panel" hidden>
+      <div class="upload-feature-card">
+        <div class="upload-card-header">
+          <div>
+            <h3 class="upload-card-title">Unggah &amp; Ringkas Buku Kamu</h3>
+            <p class="upload-card-desc">Buku hasil upload &amp; ringkasan ini tersimpan privat dan hanya dapat diakses oleh akun kamu.</p>
+          </div>
+          <span class="ai-guarantee-badge">✨ Standar 15–20 Menit Nyata</span>
+        </div>
+
+        <div class="upload-grid-inputs">
+          <div class="form-group-file">
+            <label class="form-label">Pilih Dokumen Buku (PDF / EPUB / TXT)</label>
+            <input id="uploadFile" type="file" accept=".pdf,.epub,.txt,.md" class="file-input-modern">
+          </div>
+          
+          <div class="form-group-meta">
+            <div style="flex: 1;">
+              <label class="form-label">Judul Buku (Otomatis terisi jika ada di file)</label>
+              <input id="uploadTitleInput" type="text" class="input-modern" placeholder="Judul buku...">
+            </div>
+            <div style="flex: 1;">
+              <label class="form-label">Penulis Asli / Author Origin (Otomatis terisi)</label>
+              <input id="uploadAuthorInput" type="text" class="input-modern" placeholder="Nama penulis asli...">
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap;">
+          <button id="uploadBtn" class="btn-primary" style="padding: 10px 22px; font-weight: 600;">⚡ Upload &amp; Ringkas AI</button>
+          <span style="font-size: 0.85rem; color: #736758; font-weight: 600;">atau</span>
+          <div style="display: flex; gap: 8px; flex: 1; min-width: 260px;">
+            <input id="requestTitle" class="input-modern" type="text" placeholder="Ketik judul buku lain yang ingin diringkas..." style="flex: 1;">
+            <button id="requestBtn" class="btn-secondary" style="padding: 10px 18px; white-space: nowrap;">Minta Rangkuman</button>
+          </div>
+        </div>
+
+        <p id="uploadMsg" class="upload-status-msg"></p>
+
+        <div class="upload-card-footer">
+          <span>Mesin AI Otomatis: Ringkasan Analitis Lengkap Bab per Bab &amp; Framework Taktis</span>
+          <button id="apiKeySettingsBtn" type="button" class="btn-link-settings">⚙️ Google Gemini API Key (Opsional)</button>
+        </div>
+      </div>
+
+      <div class="section-subheading" style="display: flex; justify-content: space-between; align-items: baseline; margin: 28px 0 16px;">
+        <h3 style="font-family: 'Georgia', serif; font-size: 1.2rem; color: #171410; margin: 0;">Buku Unggahan Kamu (<span id="userUploadsCount">0</span>)</h3>
+        <span style="font-size: 0.85rem; color: #736758;">Buku privat khusus akun kamu</span>
+      </div>
+
+      <!-- GRID DISPLAY BUKU PRIVAT USER -->
+      <div id="userUploadedGrid" class="book-grid"></div>
+      
+      <div id="emptyUploadsMsg" class="empty-uploads-card" hidden>
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">📚</div>
+        <h4 style="margin: 0 0 6px; font-size: 1.15rem; color: #171410;">Belum Ada Buku yang Kamu Unggah</h4>
+        <p style="margin: 0; font-size: 0.92rem; color: #736758;">Pilih berkas PDF atau EPUB buku favoritmu di kotak formulir atas untuk merangkum secara otomatis!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HALAMAN BACA SECTION -->
+  <section id="readerSection" class="reader-wrapper" hidden>
+    <div class="sticky-reader-header">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <button id="backBtn" class="btn-secondary" style="padding: 6px 14px; font-size: 0.88rem;">← Perpustakaan</button>
+        <button id="favBtn" class="btn-fav">♡ Favorit</button>
+      </div>
+      <div class="progress-track-live"><div id="progressBar" class="progress-track-fill"></div></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #736758;">
+        <span id="progressLabel">Progress: 0%</span>
+        <span>Posisi bar mengikuti scroll live</span>
+      </div>
+    </div>
+
+    <!-- PEMUTAR AUDIO RANGKUMAN (WEB SPEECH AI) -->
+    <div id="audioPlayerBar" class="reader-audio-bar">
+      <div class="audio-bar-left">
+        <span class="audio-icon-pulse">🎧</span>
+        <div class="audio-info">
+          <strong id="audioStatusTitle">Dengarkan Audio Intisari</strong>
+          <span id="audioStatusSubtitle">Narasi Suara Natural Bahasa Indonesia (Web Speech AI)</span>
+        </div>
+      </div>
+      <div class="audio-controls">
+        <button id="audioPlayBtn" class="btn-audio-control" type="button">▶ Putar Narasi</button>
+        <button id="audioStopBtn" class="btn-audio-control secondary" type="button" hidden>⏹ Berhenti</button>
+      </div>
+    </div>
+
+    <!-- TOOLBAR ERGONOMI KENYAMANAN BACA (TEMA & UKURAN HURUF) -->
+    <div class="reader-ergonomics-bar">
+      <div class="theme-switcher-group">
+        <span class="ergonomic-label">Tampilan:</span>
+        <button class="theme-btn active" data-theme="light" type="button" title="Mode Terang (Siang)">☀️ Terang</button>
+        <button class="theme-btn" data-theme="sepia" type="button" title="Mode Sepia Kertas (Kindle Style)">📜 Sepia</button>
+        
+      </div>
+      <div class="font-sizer-group">
+        <span class="ergonomic-label">Ukuran Teks:</span>
+        <button id="fontDecBtn" class="font-btn" type="button" title="Perkecil Huruf">A-</button>
+        <span id="fontSizeDisplay" class="font-size-label">100%</span>
+        <button id="fontIncBtn" class="font-btn" type="button" title="Perbesar Huruf">A+</button>
+      </div>
+    </div>
+
+    <h1 id="bookTitle" class="reader-book-title"></h1>
+    <p id="bookAuthor" class="reader-book-author"></p>
+
+    <!-- TOGGLE KILAT VS LENGKAP -->
+    <div class="mode-toggle-group">
+      <button data-mode="kilat" class="mode-toggle-btn">Kilat ±5 menit</button>
+      <button data-mode="lengkap" class="mode-toggle-btn active">Lengkap ±20 menit</button>
+    </div>
+
+    <!-- IDE BESAR -->
+    <h3 class="reader-block-title">Ide besar</h3>
+    <div id="bigIdea" class="big-idea-box"></div>
+
+    <!-- HIGHLIGHT KESELURUHAN (BERBOBOT, MENDALAM) -->
+    <h3 class="reader-block-title">Highlight keseluruhan</h3>
+    <div id="highlightBox" class="paragraphs-flow"></div>
+
+    <!-- DETAIL PER BAB (INTERAKTIF PER BAB DENGAN RINGKASAN LENGKAP) -->
+    <h3 class="reader-block-title">Detail per bab</h3>
+    <p style="font-size: 0.92rem; color: #736758; margin: -6px 0 14px;">Klik bab yang ingin kamu pelajari intisarinya lebih mendalam:</p>
+    <div id="chapterAccordionList" class="chapter-accordion-list"></div>
+
+    <!-- FRAMEWORK INTERAKTIF -->
+    <h3 class="reader-block-title">Framework Inti</h3>
+    <p style="font-size: 0.92rem; color: #736758; margin: -6px 0 14px;">Klik salah satu hukum/pilar untuk melihat panduan taktisnya:</p>
+    <div id="frameworkTabs" class="framework-tabs"></div>
+    <div id="frameworkDetailCard" class="framework-detail-card"></div>
+
+    <!-- COBA MINGGU INI -->
+    <h3 class="reader-block-title">Coba minggu ini</h3>
+    <div class="checklist-guide-card">
+      <div class="checklist-instruction">
+        <span class="badge-step">Tantangan Aksi</span>
+        <span>Pilihlah minimal 1 kebiasaan di bawah ini untuk kamu praktikkan minggu ini:</span>
+      </div>
+      <div id="checklistBox"></div>
+    </div>
+
+    <!-- PENILAIAN PEMBACA + SUGGEST BOX -->
+    <h3 class="reader-block-title">Penilaian pembaca</h3>
+    <div class="reader-review-section">
+      <div class="review-stars-header">
+        <div>
+          <h4 style="margin: 0 0 4px; color: #9a3412; font-size: 1.1rem;">Beri Nilai &amp; Ulasan Buku Ini</h4>
+          <p id="readerRatingStatus" style="margin: 0; font-size: 0.88rem; color: #7c2d12;"></p>
+        </div>
+        <div id="readerRatingInput" class="stars-interactive"></div>
+      </div>
+
+      <label style="font-size: 0.85rem; font-weight: 700; color: #9a3412; display: block; margin-bottom: 6px;">
+        Seberapa puas kamu dengan isi ringkasan buku ini? (Tulis saran / ulasan):
+      </label>
+      <textarea id="reviewText" class="suggest-textarea" placeholder="Bagikan tanggapanmu, bagian mana yang paling bermanfaat, atau saran tambahan..."></textarea>
+      
+      <div style="display: flex; justify-content: flex-end;">
+        <button id="submitReviewBtn" class="btn-primary" style="background: var(--orange); border-radius: 8px; padding: 8px 16px;">Kirim Ulasan</button>
+      </div>
+
+      <div id="reviewsStream" class="reviews-stream"></div>
+    </div>
+
+    <!-- FOOTER NAV DI DALAM BUKU: HANYA TOMBOL BACA DARI AWAL & KEMBALI KE PERPUSTAKAAN (TIDAK ADA TOMBOL 'LANJUTKAN MEMBACA') -->
+    <div style="display: flex; gap: 10px; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border-light); flex-wrap: wrap;">
+      <button id="readerBottomBackBtn" class="btn-primary">← Kembali ke Perpustakaan</button>
+      <button id="resetBtn" class="btn-secondary" hidden>Baca dari awal</button>
+    </div>
+  </section>
+</main>
+
+<script src="config.js?v=20"></script>
+<script src="books-data.js?v=20"></script>
+<script src="summarizer.js?v=20"></script>
+<script src="app.js?v=20"></script>
+</body>
+</html>
